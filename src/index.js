@@ -1,5 +1,7 @@
 const fetch = require("node-fetch");
 const { ApolloServer, gql } = require("apollo-server");
+const { GraphQLDateTime } = require('graphql-iso-date')
+
 
 const books = [
   {
@@ -52,17 +54,39 @@ const discountMockData = [
 
 // Type definitions define the "shape" of your data and specify
 // which ways the data can be fetched from the GraphQL server.
+// Type definitions define the "shape" of your data and specify
+// which ways the data can be fetched from the GraphQL server.
 const typeDefs = gql`
   # Comments in GraphQL are defined with the hash (#) symbol.
   # This "Book" type can be used in other type declarations.
+  scalar Date
   type Book {
     title: String
     author: String
   }
+  type Training {
+    id: ID!
+    title: String
+    objectives: String
+    curriculum: String
+    startDate: Date
+    uppercaseTitle: String
+    discounts: [Discount]
+  }
+  type Discount {
+    id: ID!
+    training: Training
+    code: String
+    discountPercentage: Int
+    description: String
+  }
   # The "Query" type is the root of all GraphQL queries.
   # (A "Mutation" type will be covered later on.)
   type Query {
-    books: [Book]
+    avocados: [Book]
+    trainings: [Training]
+    discounts: [Discount]
+    training(id: ID!): Training
   }
 `;
 
@@ -70,8 +94,25 @@ const typeDefs = gql`
 // schema.  We'll retrieve books from the "books" array above.
 const resolvers = {
   Query: {
-    books: () => books,
+   
+    avocados: () => books,
+    trainings: () => trainingMockData(),
+    discounts: () => fetchDiscounts(),
+    training: (parent, args) => {
+      return fetchTrainingById(args.id)
+    }
   },
+  Discount: {
+    training: (parent) => fetchTrainingByUrl(parent.training)
+  }
+  ,
+  Training: {
+    discounts: (training) => {
+      console.log(training.discounts);
+      return training.discounts.map(discount => fetchDiscountByUrl(discount));
+    }
+  },
+  Date: GraphQLDateTime
 };
 
 // In the most basic sense, the ApolloServer can be started
@@ -84,12 +125,12 @@ const server = new ApolloServer({ typeDefs, resolvers });
 server.listen().then(({ url }) => {
   console.log(`🚀  Server ready at ${url}`);
 });
-function fetchTrainings() {
-  // More info about the fetch function? https://github.com/bitinn/node-fetch#json
-  return fetch("https://api.reactgraphql.academy/rest/trainings/")
-    .then((res) => res.json())
-    .catch((error) => console.log(error));
-}
+// function fetchTrainings() {
+//   // More info about the fetch function? https://github.com/bitinn/node-fetch#json
+//   return fetch("https://api.reactgraphql.academy/rest/trainings/")
+//     .then(res) => res.json()
+//     .catch((error) => console.log(error));
+// }
 
 function fetchTrainingById(id) {
   return fetch(`https://api.reactgraphql.academy/rest/trainings/${id}`)
